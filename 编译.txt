@@ -1,0 +1,11 @@
+1. 使用jdk11
+`sdk env`
+
+2. 编译
+`./mvnw clean package -DskipTests`
+
+3. 编译部分包并打完整包
+// 编译apm-network
+./mvnw package -Papm-network -DskipTests
+// 编译apm-network并打完整包
+./mvnw package -Papm-network,dist -DskipTests

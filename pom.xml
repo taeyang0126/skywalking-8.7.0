@@ -190,7 +190,7 @@
         <checkstyle.version>6.18</checkstyle.version>
         <junit.version>4.12</junit.version>
         <mockito-core.version>3.5.13</mockito-core.version>
-        <lombok.version>1.18.20</lombok.version>
+        <lombok.version>1.18.30</lombok.version>
 
         <!-- core lib dependency -->
         <bytebuddy.version>1.10.19</bytebuddy.version>
@@ -230,6 +230,9 @@
         <gmaven-plugin.version>1.5</gmaven-plugin.version>
         <cobertura-maven-plugin.version>2.7</cobertura-maven-plugin.version>
         <checkstyle.fails.on.error>true</checkstyle.fails.on.error>
+
+        <!--此版本grpc尚不支持m1，所以这里使用intel的版本-->
+        <os.detected.classifier>osx-x86_64</os.detected.classifier>
 
     </properties>
 
@@ -477,59 +480,7 @@
                     </sourceDirectories>
                 </configuration>
             </plugin>
-            <plugin>
-                <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>${maven-checkstyle-plugin.version}</version>
-                <configuration>
-                    <configLocation>${maven.multiModuleProjectDirectory}/apm-checkstyle/checkStyle.xml</configLocation>
-                    <headerLocation>${maven.multiModuleProjectDirectory}/apm-checkstyle/CHECKSTYLE_HEAD</headerLocation>
-                    <encoding>UTF-8</encoding>
-                    <consoleOutput>true</consoleOutput>
-                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
-                    <failOnViolation>${checkstyle.fails.on.error}</failOnViolation>
-                    <sourceDirectories>
-                        <sourceDirectory>${project.build.sourceDirectory}</sourceDirectory>
-                        <sourceDirectory>${project.build.testSourceDirectory}</sourceDirectory>
-                    </sourceDirectories>
-                    <resourceIncludes>
-                        **/*.properties,
-                        **/*.sh,
-                        **/*.bat,
-                        **/*.yml,
-                        **/*.yaml,
-                        **/*.xml
-                    </resourceIncludes>
-                    <resourceExcludes>
-                        **/.asf.yaml,
-                        **/.github/**
-                    </resourceExcludes>
-                    <excludes>
-                        **/target/generated-test-sources/**,
-                        org/apache/skywalking/apm/network/register/v2/**/*.java,
-                        org/apache/skywalking/apm/network/common/**/*.java,
-                        org/apache/skywalking/apm/network/servicemesh/**/*.java,
-                        org/apache/skywalking/apm/network/language/**/*.java,
-                        org/apache/skywalking/oap/server/core/remote/grpc/proto/*.java,
-                        org/apache/skywalking/oal/rt/grammar/*.java,
-                        org/apache/skywalking/oap/server/exporter/grpc/*.java,
-                        org/apache/skywalking/oap/server/configuration/service/*.java,
-                        **/generated/*_jmhType*.java,
-                        **/generated/*_jmhTest.java
-                    </excludes>
-                    <propertyExpansion>
-                        import.control=${maven.multiModuleProjectDirectory}/apm-checkstyle/importControl.xml
-                    </propertyExpansion>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>validate</id>
-                        <phase>process-sources</phase>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>cobertura-maven-plugin</artifactId>
