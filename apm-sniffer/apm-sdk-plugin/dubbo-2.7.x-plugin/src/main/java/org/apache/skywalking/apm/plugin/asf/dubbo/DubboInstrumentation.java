@@ -36,30 +36,37 @@ public class DubboInstrumentation extends ClassInstanceMethodsEnhancePluginDefin
 
     @Override
     protected ClassMatch enhanceClass() {
+        // 定义需要拦截的类
+        // 这里使用全名称匹配拦截
         return NameMatch.byName(ENHANCE_CLASS);
     }
 
     @Override
     public ConstructorInterceptPoint[] getConstructorsInterceptPoints() {
+        // 不需要拦截构造方法
         return null;
     }
 
     @Override
     public InstanceMethodsInterceptPoint[] getInstanceMethodsInterceptPoints() {
+        // 拦截实例方法
         return new InstanceMethodsInterceptPoint[] {
             new InstanceMethodsInterceptPoint() {
                 @Override
                 public ElementMatcher<MethodDescription> getMethodsMatcher() {
+                    // 匹配方法名是 invoke 的所有方法
                     return named("invoke");
                 }
 
                 @Override
                 public String getMethodsInterceptor() {
+                    // 匹配到的方法走这个拦截器
                     return INTERCEPT_CLASS;
                 }
 
                 @Override
                 public boolean isOverrideArgs() {
+                    // 是否需要修改方法的参数
                     return false;
                 }
             }

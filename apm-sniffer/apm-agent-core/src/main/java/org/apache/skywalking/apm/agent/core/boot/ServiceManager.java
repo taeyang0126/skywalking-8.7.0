@@ -63,7 +63,7 @@ public enum ServiceManager {
         for (final BootService bootService : allServices) {
             Class<? extends BootService> bootServiceClass = bootService.getClass();
             boolean isDefaultImplementor = bootServiceClass.isAnnotationPresent(DefaultImplementor.class);
-            if (isDefaultImplementor) {
+            if (isDefaultImplementor) { // 有 @DefaultImplementor
                 if (!bootedServices.containsKey(bootServiceClass)) {
                     bootedServices.put(bootServiceClass, bootService);
                 } else {
@@ -71,15 +71,18 @@ public enum ServiceManager {
                 }
             } else {
                 OverrideImplementor overrideImplementor = bootServiceClass.getAnnotation(OverrideImplementor.class);
-                if (overrideImplementor == null) {
+                if (overrideImplementor == null) { // 没有 @DefaultImplementor and 没有 @OverrideImplementor
                     if (!bootedServices.containsKey(bootServiceClass)) {
                         bootedServices.put(bootServiceClass, bootService);
                     } else {
                         throw new ServiceConflictException("Duplicate service define for :" + bootServiceClass);
                     }
-                } else {
+                } else { // 没有 @DefaultImplementor and 有 @OverrideImplementor
+                    // 获取到 @OverrideImplementor 指定的 bootService
                     Class<? extends BootService> targetService = overrideImplementor.value();
                     if (bootedServices.containsKey(targetService)) {
+                        // 当前覆盖实现 要覆盖的 默认实现 已经加载进来了
+                        // 判断加载进来的类有没有带上 @DefaultImplementor，如果带上了，则覆盖，如果没有带上抛出异常
                         boolean presentDefault = bootedServices.get(targetService)
                                                                .getClass()
                                                                .isAnnotationPresent(DefaultImplementor.class);
@@ -90,6 +93,7 @@ public enum ServiceManager {
                                 "Service " + bootServiceClass + " overrides conflict, " + "exist more than one service want to override :" + targetService);
                         }
                     } else {
+                        // 不存在 bootedServices 中则放进去
                         bootedServices.put(targetService, bootService);
                     }
                 }
@@ -141,6 +145,7 @@ public enum ServiceManager {
     }
 
     void load(List<BootService> allServices) {
+        // spi 加载实现类
         for (final BootService bootService : ServiceLoader.load(BootService.class, AgentClassLoader.getDefault())) {
             allServices.add(bootService);
         }

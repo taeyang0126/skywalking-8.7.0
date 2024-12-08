@@ -36,6 +36,10 @@ public class InterceptorInstanceLoader {
 
     private static ConcurrentHashMap<String, Object> INSTANCE_CACHE = new ConcurrentHashMap<String, Object>();
     private static ReentrantLock INSTANCE_LOAD_LOCK = new ReentrantLock();
+    /*
+        key: 加载当前插件要拦截的那个类的类加载器，比如MonitorFilter
+        value: 既能加载插件拦截器，又能加载要拦截的那个类的类加载器，通过AgentClassLoader的parent指向key
+     */
     private static Map<ClassLoader, ClassLoader> EXTEND_PLUGIN_CLASSLOADERS = new HashMap<ClassLoader, ClassLoader>();
 
     /**
@@ -55,6 +59,8 @@ public class InterceptorInstanceLoader {
         String instanceKey = className + "_OF_" + targetClassLoader.getClass()
                                                                    .getName() + "@" + Integer.toHexString(targetClassLoader
             .hashCode());
+        // 保证相同的拦截器只加载一次，也就是保持单例模式
+        // 相同拦截器=同一个classloader+同一个拦截器类
         Object inst = INSTANCE_CACHE.get(instanceKey);
         if (inst == null) {
             INSTANCE_LOAD_LOCK.lock();
@@ -62,6 +68,11 @@ public class InterceptorInstanceLoader {
             try {
                 pluginLoader = EXTEND_PLUGIN_CLASSLOADERS.get(targetClassLoader);
                 if (pluginLoader == null) {
+                    // 这里为什么需要新建一个 AgentClassLoader 呢？
+                    // 按理来说这个拦截器一定是在plugin下面，所以一定会被AgentClassLoader进行加载的，难道不能所有的interceptor使用一个AgentClassLoader？
+                    // 答案是不能，因为拦截器中可能使用被拦截的类的方法或者字段之类的，这就要求拦截器必须认识这个被拦截的类，也就是能访问，所以必须针对每个被拦截的类
+                    // 都使用被拦截的类的类加载器作为AgentClassLoader的父类加载器，这样通过委派机制，这个AgentClassLoader加载出来的拦截器才能访问被拦截的类，
+                    // 因为加载这个拦截器的classLoader的父类加载器加载了被拦截的类，所以是一定能访问到的
                     pluginLoader = new AgentClassLoader(targetClassLoader);
                     EXTEND_PLUGIN_CLASSLOADERS.put(targetClassLoader, pluginLoader);
                 }

@@ -39,6 +39,7 @@ public enum PluginCfg {
 
     void load(InputStream input) throws IOException {
         try {
+            // 一行行读取
             BufferedReader reader = new BufferedReader(new InputStreamReader(input));
             String pluginDefine;
             while ((pluginDefine = reader.readLine()) != null) {
@@ -46,12 +47,14 @@ public enum PluginCfg {
                     if (pluginDefine.trim().length() == 0 || pluginDefine.startsWith("#")) {
                         continue;
                     }
+                    // build 成PluginDefine，PluginDefine实际上就是名称+定义的类名
                     PluginDefine plugin = PluginDefine.build(pluginDefine);
                     pluginClassList.add(plugin);
                 } catch (IllegalPluginDefineException e) {
                     LOGGER.error(e, "Failed to format plugin({}) define.", pluginDefine);
                 }
             }
+            // 排除某些插件，因为配置项中有排除插件的配置，排除是根据名称来的
             pluginClassList = pluginSelector.select(pluginClassList);
         } finally {
             input.close();

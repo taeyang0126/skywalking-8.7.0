@@ -35,6 +35,7 @@ public class AgentPackagePath {
 
     private static File AGENT_PACKAGE_PATH;
 
+    // 定位 SkyWalking agent.jar 的绝对路径
     public static File getPath() throws AgentPackageNotFoundException {
         if (AGENT_PACKAGE_PATH == null) {
             AGENT_PACKAGE_PATH = findPath();

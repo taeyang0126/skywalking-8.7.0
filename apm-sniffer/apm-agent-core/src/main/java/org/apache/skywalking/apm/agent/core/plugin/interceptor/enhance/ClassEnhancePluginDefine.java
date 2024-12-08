@@ -97,10 +97,11 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
          */
         if (!typeDescription.isAssignableTo(EnhancedInstance.class)) {
             if (!context.isObjectExtended()) {
+                // 这里会定义一个字段，Object类型的，之所以需要这个字段是为了构造器拦截的处理，有些信息需要存储在这个字段上
                 newClassBuilder = newClassBuilder.defineField(
                     CONTEXT_ATTR_NAME, Object.class, ACC_PRIVATE | ACC_VOLATILE)
-                                                 .implement(EnhancedInstance.class)
-                                                 .intercept(FieldAccessor.ofField(CONTEXT_ATTR_NAME));
+                                                 .implement(EnhancedInstance.class) // 实现EnhancedInstance接口
+                                                 .intercept(FieldAccessor.ofField(CONTEXT_ATTR_NAME)); // 实现EnhancedInstance接口中的两个方法
                 context.extendObjectCompleted();
             }
         }
@@ -118,7 +119,7 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
                                                                                                                          .getConstructorInterceptor()))));
                 } else {
                     newClassBuilder = newClassBuilder.constructor(constructorInterceptPoint.getConstructorMatcher())
-                                                     .intercept(SuperMethodCall.INSTANCE.andThen(MethodDelegation.withDefaultConfiguration()
+                                                     .intercept(SuperMethodCall.INSTANCE.andThen(MethodDelegation.withDefaultConfiguration() // SuperMethodCall.INSTANCE 调用父类构造，再进行后面的拦截
                                                                                                                  .to(new ConstructorInter(constructorInterceptPoint
                                                                                                                      .getConstructorInterceptor(), classLoader))));
                 }
@@ -135,6 +136,8 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
                     throw new EnhanceException("no InstanceMethodsAroundInterceptor define to enhance class " + enhanceOriginClassName);
                 }
                 ElementMatcher.Junction<MethodDescription> junction = not(isStatic()).and(instanceMethodsInterceptPoint.getMethodsMatcher());
+                // 如果拦截点是声明式的，比如spring中的@RequestMapping，通过这种方式拦截的，需要判断下这些方法是不是属于当前拦截到的类的，属于二次判断
+                // ElementMatchers.<MethodDescription>isDeclaredBy(typeDescription) 表示此方法是在类中申明的
                 if (instanceMethodsInterceptPoint instanceof DeclaredInstanceMethodsInterceptPoint) {
                     junction = junction.and(ElementMatchers.<MethodDescription>isDeclaredBy(typeDescription));
                 }
@@ -176,20 +179,22 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
      */
     protected DynamicType.Builder<?> enhanceClass(TypeDescription typeDescription, DynamicType.Builder<?> newClassBuilder,
         ClassLoader classLoader) throws PluginException {
+        // 获取静态方法拦截点
         StaticMethodsInterceptPoint[] staticMethodsInterceptPoints = getStaticMethodsInterceptPoints();
         String enhanceOriginClassName = typeDescription.getTypeName();
         if (staticMethodsInterceptPoints == null || staticMethodsInterceptPoints.length == 0) {
             return newClassBuilder;
         }
 
+        // 处理每个拦截点
         for (StaticMethodsInterceptPoint staticMethodsInterceptPoint : staticMethodsInterceptPoints) {
             String interceptor = staticMethodsInterceptPoint.getMethodsInterceptor();
             if (StringUtil.isEmpty(interceptor)) {
                 throw new EnhanceException("no StaticMethodsAroundInterceptor define to enhance class " + enhanceOriginClassName);
             }
 
-            if (staticMethodsInterceptPoint.isOverrideArgs()) {
-                if (isBootstrapInstrumentation()) {
+            if (staticMethodsInterceptPoint.isOverrideArgs()) { // 参数被覆盖，指的是参数能不能被修改的意思，在拦截器before方法中是可以修改方法的参数的
+                if (isBootstrapInstrumentation()) { // 拦截到的类是不是jdk内部的类(BootStrap加载的类)
                     newClassBuilder = newClassBuilder.method(isStatic().and(staticMethodsInterceptPoint.getMethodsMatcher()))
                                                      .intercept(MethodDelegation.withDefaultConfiguration()
                                                                                 .withBinders(Morph.Binder.install(OverrideCallable.class))
@@ -206,9 +211,11 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
                                                      .intercept(MethodDelegation.withDefaultConfiguration()
                                                                                 .to(BootstrapInstrumentBoost.forInternalDelegateClass(interceptor)));
                 } else {
+                    // method(isStatic().and(staticMethodsInterceptPoint.getMethodsMatcher())) 找到这个匹配的方法
                     newClassBuilder = newClassBuilder.method(isStatic().and(staticMethodsInterceptPoint.getMethodsMatcher()))
-                                                     .intercept(MethodDelegation.withDefaultConfiguration()
-                                                                                .to(new StaticMethodsInter(interceptor)));
+                                                     // intercept 相当于拦截这个方法，对这个方法进行修改
+                                                     .intercept(MethodDelegation.withDefaultConfiguration() // 使用默认的委托配置，之所以使用委托是因为拦截的逻辑比较复杂，放在一个独立的类，通过@RuntimeType表明拦截的方法
+                                                                                .to(new StaticMethodsInter(interceptor))); // 把拦截到的方法委托给 StaticMethodsInter 处理
                 }
             }
 

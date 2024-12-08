@@ -57,7 +57,7 @@ public abstract class AbstractClassEnhancePluginDefine {
      * @return the new builder, or <code>null</code> if not be enhanced.
      * @throws PluginException when set builder failure.
      */
-    public DynamicType.Builder<?> define(TypeDescription typeDescription, DynamicType.Builder<?> builder,
+    public DynamicType.Builder<?>  define(TypeDescription typeDescription, DynamicType.Builder<?> builder,
         ClassLoader classLoader, EnhanceContext context) throws PluginException {
         String interceptorDefineClassName = this.getClass().getName();
         String transformClassName = typeDescription.getTypeName();
@@ -71,6 +71,7 @@ public abstract class AbstractClassEnhancePluginDefine {
         /**
          * find witness classes for enhance class
          */
+        // witnessClasses witnessMethods 组件版本识别，比如插件通过这个只增强特定版本的代码，比如spring-3.0-plugin就只增强spring3.0的代码
         String[] witnessClasses = witnessClasses();
         if (witnessClasses != null) {
             for (String witnessClass : witnessClasses) {
@@ -93,6 +94,7 @@ public abstract class AbstractClassEnhancePluginDefine {
         /**
          * find origin class source code for interceptor
          */
+        // 实际的字节码增强
         DynamicType.Builder<?> newClassBuilder = this.enhance(typeDescription, builder, classLoader, context);
 
         context.initializationStageCompleted();
@@ -111,8 +113,11 @@ public abstract class AbstractClassEnhancePluginDefine {
      */
     protected DynamicType.Builder<?> enhance(TypeDescription typeDescription, DynamicType.Builder<?> newClassBuilder,
                                              ClassLoader classLoader, EnhanceContext context) throws PluginException {
+
+        // 静态方法增强
         newClassBuilder = this.enhanceClass(typeDescription, newClassBuilder, classLoader);
 
+        // 构造和实例方法增强
         newClassBuilder = this.enhanceInstance(typeDescription, newClassBuilder, classLoader, context);
 
         return newClassBuilder;

@@ -54,12 +54,14 @@ public class ConstructorInter {
     /**
      * Intercept the target constructor.
      *
-     * @param obj          target class instance.
+     * @param obj          target class instance.           目标类的实例
      * @param allArguments all constructor arguments
      */
     @RuntimeType
     public void intercept(@This Object obj, @AllArguments Object[] allArguments) {
         try {
+            // 构造器拦截器一定是在构造方法之后执行的
+            // 这里转换为EnhancedInstance，因为前面的方法中判断拦截的类没有实现此方法，会通过bytebuddy去实现，所以这里强转不会有问题
             EnhancedInstance targetObject = (EnhancedInstance) obj;
 
             interceptor.onConstruct(targetObject, allArguments);

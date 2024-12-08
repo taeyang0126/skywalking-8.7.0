@@ -49,6 +49,7 @@ public class AgentClassLoader extends ClassLoader {
     static {
         /*
          * Try to solve the classloader dead lock. See https://github.com/apache/skywalking/pull/2016
+         * // 开启类加载器的并行加载模式
          */
         registerAsParallelCapable();
     }
@@ -76,6 +77,7 @@ public class AgentClassLoader extends ClassLoader {
         if (DEFAULT_LOADER == null) {
             synchronized (AgentClassLoader.class) {
                 if (DEFAULT_LOADER == null) {
+                    // 这里使用的parent类加载器就是加载PluginBootstrap的类加载器，因为此方法就是PluginBootstrap中调用的
                     DEFAULT_LOADER = new AgentClassLoader(PluginBootstrap.class.getClassLoader());
                 }
             }
@@ -86,14 +88,18 @@ public class AgentClassLoader extends ClassLoader {
         super(parent);
         File agentDictionary = AgentPackagePath.getPath();
         classpath = new LinkedList<>();
+        // 默认加载 activations 和 plugins 目录下的jar包
         Config.Plugin.MOUNT.forEach(mountFolder -> classpath.add(new File(agentDictionary, mountFolder)));
     }
 
     @Override
     protected Class<?> findClass(String name) throws ClassNotFoundException {
+        // 获取到所有的jar包
         List<Jar> allJars = getAllJars();
+        // 替换为目录并添加.class
         String path = name.replace('.', '/').concat(".class");
         for (Jar jar : allJars) {
+            // 找到对应的class文件
             JarEntry entry = jar.jarFile.getJarEntry(path);
             if (entry == null) {
                 continue;
@@ -158,6 +164,8 @@ public class AgentClassLoader extends ClassLoader {
     }
 
     private Class<?> processLoadedClass(Class<?> loadedClass) {
+        // 获取类上的PluginConfig注解，将javaagent中的配置信息绑定到对应的配置类上
+        // 为了能绑定，要求必须是static&public，否则没有类的实例绑定不了
         final PluginConfig pluginConfig = loadedClass.getAnnotation(PluginConfig.class);
         if (pluginConfig != null) {
             // Set up the plugin config when loaded by class loader at the first time.

@@ -34,7 +34,9 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <premain.class>org.apache.skywalking.apm.agent.SkyWalkingAgent</premain.class>
+        <!-- 是否允许重新定义类 替换 -->
         <can.redefine.classes>true</can.redefine.classes>
+        <!-- 是否允许重新转换类 包装 -->
         <can.retransform.classes>true</can.retransform.classes>
         <shade.net.bytebuddy.source>net.bytebuddy</shade.net.bytebuddy.source>
         <shade.net.bytebuddy.target>${shade.package}.${shade.net.bytebuddy.source}</shade.net.bytebuddy.target>

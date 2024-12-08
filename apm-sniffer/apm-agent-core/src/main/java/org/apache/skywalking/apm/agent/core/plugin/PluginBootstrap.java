@@ -42,6 +42,7 @@ public class PluginBootstrap {
         AgentClassLoader.initDefaultLoader();
 
         PluginResourcesResolver resolver = new PluginResourcesResolver();
+        // 拿到所有 skywalking-plugin.def 的资源
         List<URL> resources = resolver.getResources();
 
         if (resources == null || resources.size() == 0) {
@@ -59,6 +60,7 @@ public class PluginBootstrap {
 
         List<PluginDefine> pluginClassList = PluginCfg.INSTANCE.getPluginClassList();
 
+        // 初始实例化插件
         List<AbstractClassEnhancePluginDefine> plugins = new ArrayList<AbstractClassEnhancePluginDefine>();
         for (PluginDefine pluginDefine : pluginClassList) {
             try {
@@ -71,6 +73,7 @@ public class PluginBootstrap {
             }
         }
 
+        // 加载基于xml定义的插件
         plugins.addAll(DynamicPluginLoader.INSTANCE.load(AgentClassLoader.getDefault()));
 
         return plugins;

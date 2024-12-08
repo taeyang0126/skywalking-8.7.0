@@ -22,6 +22,7 @@ import org.apache.skywalking.apm.agent.core.plugin.interceptor.InstanceMethodsIn
 import org.apache.skywalking.apm.agent.core.plugin.interceptor.ConstructorInterceptPoint;
 
 /**
+ * 拦截静态方法
  * Plugins, which only need enhance class static methods. Actually, inherit from {@link
  * ClassStaticMethodsEnhancePluginDefine} has no differences with inherit from {@link ClassEnhancePluginDefine}. Just
  * override {@link ClassEnhancePluginDefine#getConstructorsInterceptPoints} and {@link

@@ -54,10 +54,10 @@ public class StaticMethodsInter {
     /**
      * Intercept the target static method.
      *
-     * @param clazz        target class
-     * @param allArguments all method arguments
-     * @param method       method description.
-     * @param zuper        the origin call ref.
+     * @param clazz        target class     要修改字节码的类 @Origin 表示注入原生
+     * @param allArguments all method arguments   所有的参数 @AllArguments 表示将所有的参数注入进来
+     * @param method       method description.   原生的方法
+     * @param zuper        the origin call ref.  表示原方法的调用
      * @return the return value of target static method.
      * @throws Exception only throw exception because of zuper.call() or unexpected exception in sky-walking ( This is a
      *                   bug, if anything triggers this condition ).
@@ -65,11 +65,13 @@ public class StaticMethodsInter {
     @RuntimeType
     public Object intercept(@Origin Class<?> clazz, @AllArguments Object[] allArguments, @Origin Method method,
         @SuperCall Callable<?> zuper) throws Throwable {
+        // 将拦截器全类名实例化对象
         StaticMethodsAroundInterceptor interceptor = InterceptorInstanceLoader.load(staticMethodsAroundInterceptorClassName, clazz
             .getClassLoader());
 
         MethodInterceptResult result = new MethodInterceptResult();
         try {
+            // 调用beforeMethod，这里可以设置result的返回值，如果设置了，那么isContinue=false，就不会走下面的拦截方法了
             interceptor.beforeMethod(clazz, method, allArguments, method.getParameterTypes(), result);
         } catch (Throwable t) {
             LOGGER.error(t, "class[{}] before static method[{}] intercept failure", clazz, method.getName());
@@ -80,7 +82,7 @@ public class StaticMethodsInter {
             if (!result.isContinue()) {
                 ret = result._ret();
             } else {
-                ret = zuper.call();
+                ret = zuper.call(); // 原方法的调用
             }
         } catch (Throwable t) {
             try {

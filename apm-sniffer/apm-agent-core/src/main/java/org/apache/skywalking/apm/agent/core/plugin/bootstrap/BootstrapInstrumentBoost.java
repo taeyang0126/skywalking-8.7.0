@@ -86,6 +86,7 @@ public class BootstrapInstrumentBoost {
 
     public static AgentBuilder inject(PluginFinder pluginFinder, Instrumentation instrumentation,
         AgentBuilder agentBuilder, JDK9ModuleExporter.EdgeClasses edgeClasses) throws PluginException {
+        // 所有要注入到 bootstrap classloader 里面的类
         Map<String, byte[]> classesTypeMap = new HashMap<>();
 
         if (!prepareJREInstrumentation(pluginFinder, classesTypeMap)) {
@@ -114,6 +115,8 @@ public class BootstrapInstrumentBoost {
          * Inject the classes into bootstrap class loader by using Unsafe Strategy.
          * ByteBuddy adapts the sun.misc.Unsafe and jdk.internal.misc.Unsafe automatically.
          */
+        // 将类注入到 bootstrap classloader中
+        // 为什么需要注入？因为某些agent插件会修改 bootstrap classloader 加载的类，所以需要将这些插件对应的类注入到 bootstrap classloader 中
         ClassInjector.UsingUnsafe.Factory factory = ClassInjector.UsingUnsafe.Factory.resolve(instrumentation);
         factory.make(null, null).injectRaw(classesTypeMap);
         agentBuilder = agentBuilder.with(new AgentBuilder.InjectionStrategy.UsingUnsafe.OfFactory(factory));

@@ -54,6 +54,7 @@ public class PrefixMatch implements IndirectMatch {
     @Override
     public boolean isMatch(TypeDescription typeDescription) {
         for (final String prefix : prefixes) {
+            // typeDescription.getName() = 类的全类名
             if (typeDescription.getName().startsWith(prefix)) {
                 return true;
             }

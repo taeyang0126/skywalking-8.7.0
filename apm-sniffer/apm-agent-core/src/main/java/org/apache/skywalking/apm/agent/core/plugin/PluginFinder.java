@@ -46,12 +46,14 @@ public class PluginFinder {
 
     public PluginFinder(List<AbstractClassEnhancePluginDefine> plugins) {
         for (AbstractClassEnhancePluginDefine plugin : plugins) {
+            // 1. 获取到插件的类匹配器
             ClassMatch match = plugin.enhanceClass();
 
             if (match == null) {
                 continue;
             }
 
+            // 类名匹配
             if (match instanceof NameMatch) {
                 NameMatch nameMatch = (NameMatch) match;
                 LinkedList<AbstractClassEnhancePluginDefine> pluginDefines = nameMatchDefine.get(nameMatch.getClassName());
@@ -61,15 +63,20 @@ public class PluginFinder {
                 }
                 pluginDefines.add(plugin);
             } else {
+                // 间接匹配
                 signatureMatchDefine.add(plugin);
             }
 
+            // 对于jdk内部类的插件
             if (plugin.isBootstrapInstrumentation()) {
                 bootstrapClassMatchDefine.add(plugin);
             }
         }
     }
 
+    /*
+        查找所有能对指定类型生效的插件
+     */
     public List<AbstractClassEnhancePluginDefine> find(TypeDescription typeDescription) {
         List<AbstractClassEnhancePluginDefine> matchedPlugins = new LinkedList<AbstractClassEnhancePluginDefine>();
         String typeName = typeDescription.getTypeName();

@@ -66,6 +66,7 @@ public class SnifferConfigInitializer {
             AGENT_SETTINGS.load(configFileStream);
             for (String key : AGENT_SETTINGS.stringPropertyNames()) {
                 String value = (String) AGENT_SETTINGS.get(key);
+                // 配置值里面的占位符替换
                 AGENT_SETTINGS.put(key, PropertyPlaceholderHelper.INSTANCE.replacePlaceholders(value, AGENT_SETTINGS));
             }
 
@@ -74,11 +75,13 @@ public class SnifferConfigInitializer {
         }
 
         try {
+            // 环境变量中的值替换配置文件中的值
             overrideConfigBySystemProp();
         } catch (Exception e) {
             LOGGER.error(e, "Failed to read the system properties.");
         }
 
+        // agent 参数替换配置
         agentOptions = StringUtil.trim(agentOptions, ',');
         if (!StringUtil.isEmpty(agentOptions)) {
             try {
@@ -91,11 +94,14 @@ public class SnifferConfigInitializer {
             }
         }
 
+        // 将配置信息映射到Config 类
         initializeConfig(Config.class);
         // reconfigure logger after config initialization
+        // 根据配置信息重新指定日志解析器 常规日志/json
         configureLogger();
         LOGGER = LogManager.getLogger(SnifferConfigInitializer.class);
 
+        // 检查Agent名称和后端地址是否配置
         if (StringUtil.isEmpty(Config.Agent.SERVICE_NAME)) {
             throw new ExceptionInInitializerError("`agent.service_name` is missing.");
         }
@@ -197,6 +203,7 @@ public class SnifferConfigInitializer {
      * @return the config file {@link InputStream}, or null if not needEnhance.
      */
     private static InputStreamReader loadConfig() throws AgentPackageNotFoundException, ConfigNotFoundException {
+        // 从环境变量或者默认的/config/agent.config读取配置文件
         String specifiedConfigPath = System.getProperty(SPECIFIED_CONFIG_PATH);
         File configFile = StringUtil.isEmpty(specifiedConfigPath) ? new File(
             AgentPackagePath.getPath(), DEFAULT_CONFIG_FILE_NAME) : new File(specifiedConfigPath);
@@ -204,7 +211,6 @@ public class SnifferConfigInitializer {
         if (configFile.exists() && configFile.isFile()) {
             try {
                 LOGGER.info("Config file found in {}.", configFile);
-
                 return new InputStreamReader(new FileInputStream(configFile), StandardCharsets.UTF_8);
             } catch (FileNotFoundException e) {
                 throw new ConfigNotFoundException("Failed to load agent.config", e);

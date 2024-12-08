@@ -42,6 +42,9 @@ public class ConfigInitializer {
                                       ConfigDesc parentDesc) throws IllegalArgumentException, IllegalAccessException {
         for (Field field : recentConfigType.getFields()) {
             if (Modifier.isPublic(field.getModifiers()) && Modifier.isStatic(field.getModifiers())) {
+                // 这里配置项的key=各级别类名+字段名
+                // 类名注意是simpleName，比如MongoPluginConfig中配置项TRACE_PARAM，对应到这里就是 Plugin.mongodb.TRACE_PARAM，再转换为小写
+                // 所以就可以在javaagent中配置属性 plugin.mongodb.trace_param 达到插件能使用这个配置的目的
                 String configKey = (parentDesc + "." + field.getName()).toLowerCase();
                 Class<?> type = field.getType();
 
@@ -84,7 +87,9 @@ public class ConfigInitializer {
             }
         }
         for (Class<?> innerConfiguration : recentConfigType.getClasses()) {
+            // parentDesc中添加当前类的simpleName
             parentDesc.append(innerConfiguration.getSimpleName());
+            // 再次初始化
             initNextLevel(properties, innerConfiguration, parentDesc);
             parentDesc.removeLastDesc();
         }
