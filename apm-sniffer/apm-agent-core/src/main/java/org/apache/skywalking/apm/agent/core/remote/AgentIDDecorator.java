@@ -45,6 +45,7 @@ public class AgentIDDecorator implements ChannelDecorator {
 
     public AgentIDDecorator() {
         try {
+            // 获取到manifest文件，从文件中拿到skywalking的版本
             Enumeration<URL> resources = AgentIDDecorator.class.getClassLoader().getResources(JarFile.MANIFEST_NAME);
             while (resources.hasMoreElements()) {
                 URL url = resources.nextElement();
@@ -75,6 +76,7 @@ public class AgentIDDecorator implements ChannelDecorator {
                 return new ForwardingClientCall.SimpleForwardingClientCall<REQ, RESP>(channel.newCall(method, options)) {
                     @Override
                     public void start(Listener<RESP> responseListener, Metadata headers) {
+                        // 首次请求添加请求头，将skywalking版本添加进去
                         headers.put(AGENT_VERSION_HEAD_HEADER_NAME, version);
 
                         super.start(responseListener, headers);

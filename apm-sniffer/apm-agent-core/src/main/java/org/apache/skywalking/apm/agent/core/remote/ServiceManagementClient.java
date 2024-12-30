@@ -44,19 +44,26 @@ import org.apache.skywalking.apm.util.RunnableWithExceptionProtection;
 
 import static org.apache.skywalking.apm.agent.core.conf.Config.Collector.GRPC_UPSTREAM_TIMEOUT;
 
+/**
+ * 自报家门/打招呼
+ *
+ * 1. 将当前 Agent Client 的基本信息汇报给 OAP
+ * 2. 和 OAP 保持心跳
+ */
 @DefaultImplementor
 public class ServiceManagementClient implements BootService, Runnable, GRPCChannelListener {
     private static final ILog LOGGER = LogManager.getLogger(ServiceManagementClient.class);
-    private static List<KeyStringValuePair> SERVICE_INSTANCE_PROPERTIES;
+    private static List<KeyStringValuePair> SERVICE_INSTANCE_PROPERTIES; // 保存 Agent client 的信息
 
-    private volatile GRPCChannelStatus status = GRPCChannelStatus.DISCONNECT;
-    private volatile ManagementServiceGrpc.ManagementServiceBlockingStub managementServiceBlockingStub;
+    private volatile GRPCChannelStatus status = GRPCChannelStatus.DISCONNECT; // 当前网络连接状态
+    private volatile ManagementServiceGrpc.ManagementServiceBlockingStub managementServiceBlockingStub; // block grpc client
     private volatile ScheduledFuture<?> heartbeatFuture;
-    private volatile AtomicInteger sendPropertiesCounter = new AtomicInteger(0);
+    private volatile AtomicInteger sendPropertiesCounter = new AtomicInteger(0); // Agent Client 信息发送次数计数器
 
     @Override
     public void statusChanged(GRPCChannelStatus status) {
         if (GRPCChannelStatus.CONNECTED.equals(status)) {
+            // 从所有服务中找到 GRPCChannelManager 服务，拿到网络连接
             Channel channel = ServiceManager.INSTANCE.findService(GRPCChannelManager.class).getChannel();
             managementServiceBlockingStub = ManagementServiceGrpc.newBlockingStub(channel);
         } else {
@@ -67,10 +74,11 @@ public class ServiceManagementClient implements BootService, Runnable, GRPCChann
 
     @Override
     public void prepare() {
+        // 注册监听器
         ServiceManager.INSTANCE.findService(GRPCChannelManager.class).addChannelListener(this);
 
         SERVICE_INSTANCE_PROPERTIES = new ArrayList<>();
-
+        // 把配置文件中的 Agent Client 信息放入集合，等待发送
         for (String key : Config.Agent.INSTANCE_PROPERTIES.keySet()) {
             SERVICE_INSTANCE_PROPERTIES.add(KeyStringValuePair.newBuilder()
                                                               .setKey(key)
@@ -108,6 +116,11 @@ public class ServiceManagementClient implements BootService, Runnable, GRPCChann
         if (GRPCChannelStatus.CONNECTED.equals(status)) {
             try {
                 if (managementServiceBlockingStub != null) {
+                    // 1. 将自己的信息上报给 OAP
+                    // 心跳周期 = 30s，信息汇报频率因子 = 10
+                    // Round 1. counter = 0 0%10 = 0 -> 进行汇报
+                    // Round 2. counter = 0 1%10 = 1 -> 不进行汇报
+                    // ... 所以汇报的周期 = 心跳周期 * 信息汇报频率因子 = 300s
                     if (Math.abs(sendPropertiesCounter.getAndAdd(1)) % Config.Collector.PROPERTIES_REPORT_PERIOD_FACTOR == 0) {
 
                         managementServiceBlockingStub
@@ -121,13 +134,14 @@ public class ServiceManagementClient implements BootService, Runnable, GRPCChann
                                                                         .addAllProperties(LoadedLibraryCollector.buildJVMInfo())
                                                                         .build());
                     } else {
+                        // 维持心跳拿到OAP返回的commands
                         final Commands commands = managementServiceBlockingStub.withDeadlineAfter(
                             GRPC_UPSTREAM_TIMEOUT, TimeUnit.SECONDS
                         ).keepAlive(InstancePingPkg.newBuilder()
                                                    .setService(Config.Agent.SERVICE_NAME)
                                                    .setServiceInstance(Config.Agent.INSTANCE_NAME)
                                                    .build());
-
+                        // 将 OAP 返回的 commands 交给下游服务处理
                         ServiceManager.INSTANCE.findService(CommandService.class).receiveCommand(commands);
                     }
                 }

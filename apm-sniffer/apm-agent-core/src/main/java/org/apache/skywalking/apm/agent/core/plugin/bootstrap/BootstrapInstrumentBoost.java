@@ -89,6 +89,16 @@ public class BootstrapInstrumentBoost {
         // 所有要注入到 bootstrap classloader 里面的类
         Map<String, byte[]> classesTypeMap = new HashMap<>();
 
+        /*
+            针对目标类是 JDK 核心类库的插件，这里根据插件的拦截点的不同（实例方法、静态方法、构造方法）
+            使用不同的模板（XXXTemplate）来定义新的拦截器的核心处理逻辑，并且将插件本身定义的拦截器的全类名
+            赋值给模板的 TARGET_INTERCEPTOR 字段
+
+            最终，这些新的拦截器的核心处理逻辑都会被放入 Bootstrap classloader中
+
+            !! 为什么增加JDK内部类需要这么做呢？
+            - 这个问题暂时未知，需要再考虑！！可能是安全或者其他？？
+         */
         if (!prepareJREInstrumentation(pluginFinder, classesTypeMap)) {
             return agentBuilder;
         }
@@ -117,7 +127,18 @@ public class BootstrapInstrumentBoost {
          */
         // 将类注入到 bootstrap classloader中
         // 为什么需要注入？因为某些agent插件会修改 bootstrap classloader 加载的类，所以需要将这些插件对应的类注入到 bootstrap classloader 中
+
+        // 1. ClassInjector.UsingUnsafe表示使用Unsafe方式注入类
+        // 这种方式可以绕过JVM的常规类加载限制
         ClassInjector.UsingUnsafe.Factory factory = ClassInjector.UsingUnsafe.Factory.resolve(instrumentation);
+        // 2. factory.make创建注入器实例
+        // 两个null参数分别是:
+        // - 第一个null: 目标ClassLoader(null表示使用bootstrap classloader)
+        // - 第二个null: 保护域(ProtectionDomain)
+        // 3. injectRaw注入原始字节码
+        // classesTypeMap是一个Map<TypeDescription, byte[]>
+        // key: 类的类型描述
+        // value: 类的字节码
         factory.make(null, null).injectRaw(classesTypeMap);
         agentBuilder = agentBuilder.with(new AgentBuilder.InjectionStrategy.UsingUnsafe.OfFactory(factory));
 
@@ -152,13 +173,15 @@ public class BootstrapInstrumentBoost {
      * Generate dynamic delegate for ByteBuddy
      *
      * @param pluginFinder   gets the whole plugin list.
-     * @param classesTypeMap hosts the class binary.
+     * @param classesTypeMap hosts the class binary.    需要加载到bootStrapClassloader中的类
      * @return true if have JRE instrumentation requirement.
      * @throws PluginException when generate failure.
      */
     private static boolean prepareJREInstrumentation(PluginFinder pluginFinder,
         Map<String, byte[]> classesTypeMap) throws PluginException {
+        // 1. 构建一个TypePool。这个TypePool能加载指定classloader中的所有对象
         TypePool typePool = TypePool.Default.of(BootstrapInstrumentBoost.class.getClassLoader());
+        // 2. 获取到需要对jdk核心类库增强的插件
         List<AbstractClassEnhancePluginDefine> bootstrapClassMatchDefines = pluginFinder.getBootstrapClassMatchDefine();
         for (AbstractClassEnhancePluginDefine define : bootstrapClassMatchDefines) {
             if (Objects.nonNull(define.getInstanceMethodsInterceptPoints())) {
@@ -168,6 +191,7 @@ public class BootstrapInstrumentBoost {
                             classesTypeMap, typePool, INSTANCE_METHOD_WITH_OVERRIDE_ARGS_DELEGATE_TEMPLATE, point
                                 .getMethodsInterceptor());
                     } else {
+                        // INSTANCE_METHOD_DELEGATE_TEMPLATE 表示生成类的模板
                         generateDelegator(
                             classesTypeMap, typePool, INSTANCE_METHOD_DELEGATE_TEMPLATE, point.getMethodsInterceptor());
                     }
@@ -251,15 +275,17 @@ public class BootstrapInstrumentBoost {
         String templateClassName, String methodsInterceptor) {
         String internalInterceptorName = internalDelegate(methodsInterceptor);
         try {
+            // 获取 typePool 类加载器下classpath下的类定义
             TypeDescription templateTypeDescription = typePool.describe(templateClassName).resolve();
-
+            // 根据模板源文件 templateTypeDescription 重新定义一个类
+            // ClassFileLocator的作用是定位和读取类文件，它只是告诉ByteBuddy从哪里找到模板类的字节码，用于读取类的结构信息，如方法、字段等
             DynamicType.Unloaded interceptorType = new ByteBuddy().redefine(templateTypeDescription, ClassFileLocator.ForClassLoader
                 .of(BootstrapInstrumentBoost.class.getClassLoader()))
-                                                                  .name(internalInterceptorName)
-                                                                  .field(named("TARGET_INTERCEPTOR"))
+                                                                  .name(internalInterceptorName) // 类的名称
+                                                                  .field(named("TARGET_INTERCEPTOR"))   // 设定 TARGET_INTERCEPTOR 的值为原始的plugin名称
                                                                   .value(methodsInterceptor)
                                                                   .make();
-
+            // 拿到 make 的类的字节码
             classesTypeMap.put(internalInterceptorName, interceptorType.getBytes());
 
             InstrumentDebuggingClass.INSTANCE.log(interceptorType);

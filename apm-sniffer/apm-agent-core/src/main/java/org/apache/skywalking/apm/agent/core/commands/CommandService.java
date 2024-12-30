@@ -34,6 +34,11 @@ import org.apache.skywalking.apm.network.trace.component.command.CommandDeserial
 import org.apache.skywalking.apm.network.trace.component.command.UnsupportedCommandException;
 import org.apache.skywalking.apm.util.RunnableWithExceptionProtection;
 
+/**
+ * Command Scheduler 命令的调度器
+ *
+ * 收集 OAP 返回的 Commands，然后分发给不同的处理器处理
+ */
 @DefaultImplementor
 public class CommandService implements BootService, Runnable {
 
@@ -43,7 +48,7 @@ public class CommandService implements BootService, Runnable {
     private ExecutorService executorService = Executors.newSingleThreadExecutor(
         new DefaultNamedThreadFactory("CommandService")
     );
-    private LinkedBlockingQueue<BaseCommand> commands = new LinkedBlockingQueue<>(64);
+    private LinkedBlockingQueue<BaseCommand> commands = new LinkedBlockingQueue<>(64); // 待处理命令列表
     private CommandSerialNumberCache serialNumberCache = new CommandSerialNumberCache();
 
     @Override
@@ -65,6 +70,7 @@ public class CommandService implements BootService, Runnable {
             try {
                 BaseCommand command = commands.take();
 
+                // 判断任务是否执行过了
                 if (isCommandExecuted(command)) {
                     continue;
                 }

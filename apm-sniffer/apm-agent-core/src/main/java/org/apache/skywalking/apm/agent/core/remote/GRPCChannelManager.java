@@ -43,18 +43,21 @@ import org.apache.skywalking.apm.util.RunnableWithExceptionProtection;
 
 import static org.apache.skywalking.apm.agent.core.conf.Config.Collector.IS_RESOLVE_DNS_PERIODICALLY;
 
+/*
+    这个服务是 agent 到 OAP 的大动脉，也就是网络链接
+ */
 @DefaultImplementor
 public class GRPCChannelManager implements BootService, Runnable {
     private static final ILog LOGGER = LogManager.getLogger(GRPCChannelManager.class);
 
-    private volatile GRPCChannel managedChannel = null;
-    private volatile ScheduledFuture<?> connectCheckFuture;
-    private volatile boolean reconnect = true;
+    private volatile GRPCChannel managedChannel = null;  // 网络连接
+    private volatile ScheduledFuture<?> connectCheckFuture; // 网路连接状态定时检查任务调度器
+    private volatile boolean reconnect = true;  // 当前网络连接是否需要重连
     private final Random random = new Random();
     private final List<GRPCChannelListener> listeners = Collections.synchronizedList(new LinkedList<>());
-    private volatile List<String> grpcServers;
-    private volatile int selectedIdx = -1;
-    private volatile int reconnectCount = 0;
+    private volatile List<String> grpcServers; // oap 地址
+    private volatile int selectedIdx = -1;  // 上次选择的 OAP 地址的下标索引
+    private volatile int reconnectCount = 0;    // 网络重连次数
 
     @Override
     public void prepare() {
@@ -63,6 +66,7 @@ public class GRPCChannelManager implements BootService, Runnable {
 
     @Override
     public void boot() {
+        // 检查 OAP 地址
         if (Config.Collector.BACKEND_SERVICE.trim().length() == 0) {
             LOGGER.error("Collector server addresses are not set.");
             LOGGER.error("Agent will not uplink any data.");
@@ -98,12 +102,14 @@ public class GRPCChannelManager implements BootService, Runnable {
     @Override
     public void run() {
         LOGGER.debug("Selected collector grpc service running, reconnect:{}.", reconnect);
+        // 如果需要定期解析dns & 需要重连
         if (IS_RESOLVE_DNS_PERIODICALLY && reconnect) {
             String backendService = Config.Collector.BACKEND_SERVICE.split(",")[0];
             try {
                 String[] domainAndPort = backendService.split(":");
 
                 List<String> newGrpcServers = Arrays
+                        // 找到 domain 对应的所有 IP
                         .stream(InetAddress.getAllByName(domainAndPort[0]))
                         .map(InetAddress::getHostAddress)
                         .map(ip -> String.format("%s:%s", ip, domainAndPort[1]))
@@ -140,6 +146,7 @@ public class GRPCChannelManager implements BootService, Runnable {
                         reconnectCount = 0;
                         reconnect = false;
                     } else if (managedChannel.isConnected(++reconnectCount > Config.Agent.FORCE_RECONNECTION_PERIOD)) {
+                        // 如果重连次数超过限制，则查看原连接是否存活
                         // Reconnect to the same server is automatically done by GRPC,
                         // therefore we are responsible to check the connectivity and
                         // set the state and notify listeners

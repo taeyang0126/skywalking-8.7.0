@@ -23,9 +23,9 @@ public class CommandDeserializer {
 
     public static BaseCommand deserialize(final Command command) {
         final String commandName = command.getCommand();
-        if (ProfileTaskCommand.NAME.equals(commandName)) {
+        if (ProfileTaskCommand.NAME.equals(commandName)) { // 性能追踪
             return ProfileTaskCommand.DESERIALIZER.deserialize(command);
-        } else if (ConfigurationDiscoveryCommand.NAME.equals(commandName)) {
+        } else if (ConfigurationDiscoveryCommand.NAME.equals(commandName)) { // 配置更改
             return ConfigurationDiscoveryCommand.DESERIALIZER.deserialize(command);
         }
         throw new UnsupportedCommandException(command);

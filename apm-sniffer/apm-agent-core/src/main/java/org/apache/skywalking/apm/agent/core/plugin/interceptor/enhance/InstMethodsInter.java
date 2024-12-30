@@ -84,6 +84,8 @@ public class InstMethodsInter {
                 ret = result._ret();
             } else {
                 ret = zuper.call();
+                // 为什么不能 method.invoke 呢
+                // 因为这里的method指向被字节码增强后的方法，也就是当前intercept方法！！
             }
         } catch (Throwable t) {
             try {

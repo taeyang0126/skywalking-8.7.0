@@ -114,6 +114,7 @@ public class InstanceMethodInterTemplate {
 
     /**
      * Prepare the context. Link to the agent core in AppClassLoader.
+     *
      */
     private static void prepare() {
         if (INTERCEPTOR == null) {

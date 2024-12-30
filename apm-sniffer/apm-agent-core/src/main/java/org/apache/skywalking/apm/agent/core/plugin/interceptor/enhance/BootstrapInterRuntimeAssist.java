@@ -53,6 +53,7 @@ public class BootstrapInterRuntimeAssist {
 
     public static IBootstrapLog getLogger(ClassLoader defaultAgentClassLoader, String interceptor) {
         try {
+            // 之所以需要重新加载一个日志是因为 IBootstrapLog 不是由 bootStrap classLoader 加载的，所以需要重新使用这个加载
             Class<?> logManagerClass = Class.forName(LOG_MANAGER_CLASS, true, defaultAgentClassLoader);
             Method getLogger = logManagerClass.getMethod(LOG_MANAGER_GET_LOGGER_METHOD, String.class);
             return (IBootstrapLog) getLogger.invoke(null, interceptor + "_internal");

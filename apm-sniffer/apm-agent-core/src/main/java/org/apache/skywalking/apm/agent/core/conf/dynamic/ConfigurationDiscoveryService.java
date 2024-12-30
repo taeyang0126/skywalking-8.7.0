@@ -88,6 +88,8 @@ public class ConfigurationDiscoveryService implements BootService, GRPCChannelLi
 
     @Override
     public void boot() throws Throwable {
+        // 定期去 OAP 获取配置信息
+        // 服务端又会返回 ConfigurationDiscoveryCommand，这个command会被 handleConfigurationDiscoveryCommand 方法处理
         getDynamicConfigurationFuture = Executors.newSingleThreadScheduledExecutor(
             new DefaultNamedThreadFactory("ConfigurationDiscoveryService")
         ).scheduleAtFixedRate(
@@ -210,6 +212,7 @@ public class ConfigurationDiscoveryService implements BootService, GRPCChannelLi
                 builder.setService(Config.Agent.SERVICE_NAME);
 
                 // Some plugin will register watcher later.
+                // 获取到注册的观察器的数量，如果与上一次数量不一致，说明有观察器的变更，这里重置uuid，重新去OAP拉取配置信息
                 final int size = register.keys().size();
                 if (lastRegisterWatcherSize != size) {
                     // reset uuid, avoid the same uuid causing the configuration not to be updated.
