@@ -47,8 +47,8 @@ public class SamplingService implements BootService {
     private static final ILog LOGGER = LogManager.getLogger(SamplingService.class);
 
     private volatile boolean on = false;
-    private volatile AtomicInteger samplingFactorHolder;
-    private volatile ScheduledFuture<?> scheduledFuture;
+    private volatile AtomicInteger samplingFactorHolder;  // 累加3秒内已经采样的次数
+    private volatile ScheduledFuture<?> scheduledFuture; // 每3秒重置一次 samplingFactorHolder
 
     private SamplingRateWatcher samplingRateWatcher;
 
@@ -58,6 +58,7 @@ public class SamplingService implements BootService {
 
     @Override
     public void boot() {
+        // 对 agent.sample_n_per_3_secs 配置项进行监听
         samplingRateWatcher = new SamplingRateWatcher("agent.sample_n_per_3_secs", this);
         ServiceManager.INSTANCE.findService(ConfigurationDiscoveryService.class)
                                .registerAgentConfigChangeWatcher(samplingRateWatcher);
@@ -78,6 +79,8 @@ public class SamplingService implements BootService {
     }
 
     /**
+     * 如果采样机制没有开始(on=false)表示每一条采样的链路都会上报给OAP
+     *
      * @param operationName The first operation name of the new tracing context.
      * @return true, if sampling mechanism is on, and getDefault the sampling factor successfully.
      */
@@ -117,6 +120,7 @@ public class SamplingService implements BootService {
                 this.resetSamplingFactor();
                 ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor(
                     new DefaultNamedThreadFactory("SamplingService"));
+                // 固定3s进行重置
                 scheduledFuture = service.scheduleAtFixedRate(new RunnableWithExceptionProtection(
                     this::resetSamplingFactor, t -> LOGGER.error("unexpected exception.", t)), 0, 3, TimeUnit.SECONDS);
                 LOGGER.debug(
