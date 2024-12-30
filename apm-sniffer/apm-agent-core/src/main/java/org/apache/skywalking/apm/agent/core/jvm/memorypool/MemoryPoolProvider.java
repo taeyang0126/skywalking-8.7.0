@@ -33,6 +33,7 @@ public enum MemoryPoolProvider {
         beans = ManagementFactory.getMemoryPoolMXBeans();
         for (MemoryPoolMXBean bean : beans) {
             String name = bean.getName();
+            // 找到对应的垃圾回收器对应的Accessor
             MemoryPoolMetricsAccessor accessor = findByBeanName(name);
             if (accessor != null) {
                 metricAccessor = accessor;
@@ -48,6 +49,11 @@ public enum MemoryPoolProvider {
         return metricAccessor.getMemoryPoolMetricsList();
     }
 
+    // JMM
+    // Memory
+    //  Young
+    //  Old
+    //  Perm / Metaspace
     private MemoryPoolMetricsAccessor findByBeanName(String name) {
         if (name.indexOf("PS") > -1) {
             //Parallel (Old) collector ( -XX:+UseParallelOldGC )

@@ -35,6 +35,7 @@ public enum CPUProvider {
                                                                             .getConstructor(int.class)
                                                                             .newInstance(processorNum);
         } catch (Exception e) {
+            // 因为底层使用了OperatingSystemMXBean，所以可能当前jdk不支持，那么这里进行降级处理
             this.cpuMetricsAccessor = new NoSupportedCPUAccessor(processorNum);
             ILog logger = LogManager.getLogger(CPUProvider.class);
             logger.error(e, "Only support accessing CPU metrics in SUN JVM platform.");
