@@ -31,6 +31,7 @@ import static org.apache.skywalking.apm.agent.core.context.status.StatusChecker.
 /**
  * The <code>StatusCheckService</code> determines whether the span should be tagged in error status if an exception
  * captured in the scope.
+ *  用来判断哪些异常不算异常，不属于异常的不进行采集
  */
 @DefaultImplementor
 public class StatusCheckService implements BootService {

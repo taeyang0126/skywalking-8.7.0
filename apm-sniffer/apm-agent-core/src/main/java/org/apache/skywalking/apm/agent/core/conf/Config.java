@@ -303,6 +303,11 @@ public class Config {
          * The max recursive depth when checking the exception traced by the agent. Typically, we don't recommend
          * setting this more than 10, which could cause a performance issue. Negative value and 0 would be ignored,
          * which means all exceptions would make the span tagged in error status.
+         * AException
+         *      BException
+         *          CException
+         *
+         * 假设配置了AException，抛出了CException，就需要在CException往上找，这里是指的往上找的层级
          */
         public static Integer MAX_RECURSIVE_DEPTH = 1;
     }
